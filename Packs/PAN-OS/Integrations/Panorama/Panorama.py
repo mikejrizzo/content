@@ -9548,6 +9548,7 @@ class ShowSystemInfoResultData(ResultData):
     :param wildfire_version: Wildfire content version
     :param wildfire_release_date: Wildfire release date
     :param url_filtering_version: URL Filtering content version
+    :param global_protect_client_package_version: GlobalProtect content version
     """
 
     ip_address: str
@@ -9572,6 +9573,7 @@ class ShowSystemInfoResultData(ResultData):
     wildfire_version: str = "not_installed"
     wildfire_release_date: str = "not_installed"
     url_filtering_version: str = "not_installed"
+    global_protect_client_package_version: str = "0.0.0"
 
 
 @dataclass
@@ -14570,6 +14572,59 @@ def pan_os_get_master_key_details_command() -> CommandResults:
         readable_output=human_readable,
     )
 
+def pan_os_get_certificate_info_command(topology: Topology, target: Optional[str] = None) -> CommandResults:
+    """
+    Get certificate information from PAN-OS device
+
+    Args:
+        target: Command arguments
+
+    Returns:
+        CommandResults: Certificate information
+    """
+    cmd = "show sslmgr-store config-certificate-info"
+    try:
+        firewall_certificate_info = []
+        for firewall in topology.firewalls(target=target):
+            response = run_op_command(firewall,cmd)
+            result = response.find(".//result")
+            cert_text = result.text.strip()
+
+            # Print for debugging
+            demisto.debug(f"Certificate text: {cert_text}")
+
+            # Process the text into structured data
+            # Split by certificate entries (each cert ends with "\n\n")
+            cert_entries = cert_text.split("\n\n")
+            cert_entries = [entry.strip() for entry in cert_entries if entry.strip()]
+
+            cert_info = []
+            cert_info = [{
+                            k.strip(): v.strip()
+                            for line in entry.split('\n')[2:]
+                            if ":" in line
+                            for k, v in [line.split(':', 1)]
+                            if k.strip()  # Only add entries with non-empty keys
+                        }
+                        for entry in cert_entries]
+
+            # Format Expiration Date to ISO string
+            # if "db-exp-date" in cert_info:
+            #     cert_info["db-exp-date"] =
+
+            firewall_certificate_info.append({"serial":firewall.serial, "certificates":cert_info})
+
+        readable_output = tableToMarkdown('Certificate Information', firewall_certificate_info, removeNull=True)
+
+        return CommandResults(
+                                outputs_prefix='Panorama.Certificate',
+                                outputs=firewall_certificate_info,
+                                readable_output=readable_output,
+                                raw_response=firewall_certificate_info
+                            )
+
+    except Exception as e:
+        raise Exception(f'Failed to get certificate information: {str(e)}')
 
 """ Fetch Incidents """
 
@@ -15768,6 +15823,9 @@ def main():  # pragma: no cover
             return_results(pan_os_update_master_key_command(args))
         elif command == "pan-os-get-master-key-details":
             return_results(pan_os_get_master_key_details_command())
+        elif command == 'pan-os-get-certificate-info':
+            topology = get_topology()
+            return_results(pan_os_get_certificate_info_command(topology, args))
         else:
             raise NotImplementedError(f"Command {command} is not implemented.")
     except Exception as err:

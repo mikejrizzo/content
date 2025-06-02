@@ -12,7 +12,7 @@ import html
 import panos.errors
 
 from panos.base import PanDevice, VersionedPanObject, Root, ENTRY, VersionedParamPath  # type: ignore
-from panos.panorama import Panorama, DeviceGroup, Template, PanoramaCommitAll
+from panos.panorama import Panorama, DeviceGroup, Template, TemplateStack, PanoramaCommitAll
 from panos.policies import Rulebase, PreRulebase, PostRulebase, SecurityRule, NatRule
 from panos.objects import (
     LogForwardingProfile,
@@ -266,6 +266,23 @@ class ExceptionCommandType(enum.Enum):
     EDIT = "edit"
     DELETE = "delete"
     LIST = "get"
+
+
+class DynamicUpdateType(enum.Enum):
+    """Enum for dynamic update types to download/install"""
+
+    APP_THREAT = "content"
+    ANTIVIRUS = "anti-virus"
+    WILDFIRE = "wildfire"
+    GP = "global-protect-clientless-vpn"
+
+
+DynamicUpdateContextPrefixMap = {
+    DynamicUpdateType.APP_THREAT: "Content",
+    DynamicUpdateType.ANTIVIRUS: "AntiVirus",
+    DynamicUpdateType.WILDFIRE: "WildFire",
+    DynamicUpdateType.GP: "GP",
+}
 
 
 class QueryMap(TypedDict):
@@ -582,7 +599,7 @@ def do_pagination(
     if isinstance(entries, list) and page is not None:
         if page <= 0:
             raise DemistoException(f"page {page} must be a positive number")
-        entries = entries[(page - 1) * page_size : page_size * page]  # do pagination
+        entries = entries[(page - 1) * page_size: page_size * page]  # do pagination
     elif isinstance(entries, list):
         entries = entries[:limit]
 
@@ -6532,10 +6549,10 @@ def panorama_show_device_version_command(target: Optional[str] = None):
 
 
 @logger
-def panorama_download_latest_content_update_content(target: Optional[str] = None):
+def panorama_download_latest_dynamic_update_content(update_type: DynamicUpdateType, target: Optional[str] = None):
     params = {
         "type": "op",
-        "cmd": "<request><content><upgrade><download><latest/></download></upgrade></content></request>",
+        "cmd": f"<request><{update_type.value}><upgrade><download><latest/></download></upgrade></{update_type.value}></request>",
         "key": API_KEY,
     }
     if target:
@@ -6546,21 +6563,25 @@ def panorama_download_latest_content_update_content(target: Optional[str] = None
     return result
 
 
-def panorama_download_latest_content_update_command(args: dict):
+def panorama_download_latest_dynamic_update_command(update_type: DynamicUpdateType, args: dict):
     """
-    Download content and show message in war room
+    Download dynamic update content and show message in war room
     """
     target = args.get("target", None)
     if DEVICE_GROUP and not target:
         raise Exception("Download latest content is only supported on Firewall (not Panorama).")
 
-    result = panorama_download_latest_content_update_content(target)
+    result = panorama_download_latest_dynamic_update_content(update_type, target)
 
     if "result" in result["response"]:
         # download has been given a jobid
+        entry_context_prefix = DynamicUpdateContextPrefixMap.get(update_type)
+
         download_status_output = {"JobID": result["response"]["result"]["job"], "Status": "Pending"}
-        entry_context = {"Panorama.Content.Download(val.JobID == obj.JobID)": download_status_output}
-        human_readable = tableToMarkdown("Content download:", download_status_output, ["JobID", "Status"], removeNull=True)
+        entry_context = {f"Panorama.{entry_context_prefix}.Download(val.JobID == obj.JobID)": download_status_output}
+        human_readable = tableToMarkdown(
+            f"{entry_context_prefix} update download:", download_status_output, ["JobID", "Status"], removeNull=True
+        )
 
         return_results(
             {
@@ -6588,9 +6609,9 @@ def panorama_content_update_download_status(target: str, job_id: str):
     return result
 
 
-def panorama_content_update_download_status_command(args: dict):
+def panorama_dynamic_update_download_status_command(update_type: DynamicUpdateType, args: dict):
     """
-    Check jobID of content update download status
+    Check jobID of dynamic update download status
     """
     target = str(args["target"]) if "target" in args else None
     if DEVICE_GROUP and not target:
@@ -6612,9 +6633,14 @@ def panorama_content_update_download_status_command(args: dict):
     if result["response"]["result"]["job"]["status"] == "PEND":
         content_download_status["Status"] = "Pending"
 
-    entry_context = {"Panorama.Content.Download(val.JobID == obj.JobID)": content_download_status}
+    entry_context_prefix = DynamicUpdateContextPrefixMap.get(update_type)
+
+    entry_context = {f"Panorama.{entry_context_prefix}.Download(val.JobID == obj.JobID)": content_download_status}
     human_readable = tableToMarkdown(
-        "Content download status:", content_download_status, ["JobID", "Status", "Details"], removeNull=True
+        f"{entry_context_prefix} update download status:",
+        content_download_status,
+        ["JobID", "Status", "Details"],
+        removeNull=True,
     )
 
     return_results(
@@ -6630,10 +6656,10 @@ def panorama_content_update_download_status_command(args: dict):
 
 
 @logger
-def panorama_install_latest_content_update(target: str):
+def panorama_install_latest_dynamic_update(update_type: DynamicUpdateType, target: str):
     params = {
         "type": "op",
-        "cmd": "<request><content><upgrade><install><version>latest</version></install></upgrade></content></request>",
+        "cmd": f"<request><{update_type.value}><upgrade><install><version>latest</version></install></upgrade></{update_type.value}></request>",
         "key": API_KEY,
     }
     if target:
@@ -6643,16 +6669,18 @@ def panorama_install_latest_content_update(target: str):
     return result
 
 
-def panorama_install_latest_content_update_command(target: Optional[str] = None):
+def panorama_install_latest_dynamic_update_command(update_type: DynamicUpdateType, target: Optional[str] = None):
     """
     Check jobID of content content install status
     """
-    result = panorama_install_latest_content_update(target)
+    result = panorama_install_latest_dynamic_update(update_type, target)
 
     if "result" in result["response"]:
         # installation has been given a jobid
+        entry_context_prefix = DynamicUpdateContextPrefixMap.get(update_type)
+
         content_install_info = {"JobID": result["response"]["result"]["job"], "Status": "Pending"}
-        entry_context = {"Panorama.Content.Install(val.JobID == obj.JobID)": content_install_info}
+        entry_context = {f"Panorama.{entry_context_prefix}.Install(val.JobID == obj.JobID)": content_install_info}
         human_readable = tableToMarkdown("Result:", content_install_info, ["JobID", "Status"], removeNull=True)
 
         return_results(
@@ -6679,7 +6707,7 @@ def panorama_content_update_install_status(target: str, job_id: str):
     return result
 
 
-def panorama_content_update_install_status_command(args: dict):
+def panorama_dynamic_update_install_status_command(update_type: DynamicUpdateType, args: dict):
     """
     Check jobID of content update install status
     """
@@ -6702,9 +6730,11 @@ def panorama_content_update_install_status_command(args: dict):
     if result["response"]["result"]["job"]["status"] == "PEND":
         content_install_status["Status"] = "Pending"
 
-    entry_context = {"Panorama.Content.Install(val.JobID == obj.JobID)": content_install_status}
+    entry_context_prefix = DynamicUpdateContextPrefixMap.get(update_type)
+
+    entry_context = {f"Panorama.{entry_context_prefix}.Install(val.JobID == obj.JobID)": content_install_status}
     human_readable = tableToMarkdown(
-        "Content install status:", content_install_status, ["JobID", "Status", "Details"], removeNull=True
+        f"{entry_context_prefix} install status:", content_install_status, ["JobID", "Status", "Details"], removeNull=True
     )
     return_results(
         {
@@ -8787,7 +8817,21 @@ class BestPractices:
     SPYWARE_BLOCK_SEVERITIES = ["critical", "high"]
     VULNERABILITY_ALERT_THRESHOLD = ["medium", "low"]
     VULNERABILITY_BLOCK_SEVERITIES = ["critical", "high"]
-    URL_BLOCK_CATEGORIES = ["command-and-control", "hacking", "malware", "phishing"]
+    URL_BLOCK_CATEGORIES = [
+        "abused-drugs",
+        "adult",
+        "command-and-control",
+        "compromised-website",
+        "gambling",
+        "grayware",
+        "hacking",
+        "malware",
+        "phishing",
+        "questionable",
+        "ransomware",
+        "scanning-activity",
+        "weapons",
+    ]
 
 
 # pan-os-python new classes
@@ -9335,7 +9379,7 @@ class Topology:
         device_filter_string: Optional[str] = None,
         container_name: Optional[str] = None,
         top_level_devices_only: Optional[bool] = False,
-    ) -> List[Tuple[PanDevice, Union[Panorama, Firewall, DeviceGroup, Template, Vsys]]]:
+    ) -> List[Tuple[PanDevice, Union[Panorama, Firewall, DeviceGroup, Template, TemplateStack, Vsys]]]:
         """
         Given a device, returns all the possible configuration containers that can contain objects -
         vsys, device-groups, templates and template-stacks.
@@ -9358,6 +9402,10 @@ class Topology:
             templates = Template.refreshall(device)
             for template in templates:
                 containers.append((device, template))
+
+            template_stacks = TemplateStack.refreshall(device)
+            for template_stack in template_stacks:
+                containers.append((device, template_stack))
 
             virtual_systems = Vsys.refreshall(device)
             for virtual_system in virtual_systems:
@@ -10671,6 +10719,7 @@ class HygieneLookups:
         device_filter_str: Optional[str] = None,
         minimum_block_severities: Optional[List[str]] = None,
         minimum_alert_severities: Optional[List[str]] = None,
+        return_nonconforming_profiles: Optional[bool] = False,
     ) -> ConfigurationHygieneCheckResult:
         """
         Checks the environment to ensure at least one vulnerability profile is configured according to visibility best practices.
@@ -10680,6 +10729,7 @@ class HygieneLookups:
         :param device_filter_str: Filter checks to a specific device or devices
         :param minimum_alert_severities: A string list of severities that MUST be in a alert mode
         :param minimum_block_severities: A string list of severities that MUST be in block mode
+        :param return_nonconforming_profiles: Whether to return details of non-conforming profiles
         """
 
         if not minimum_block_severities:
@@ -10688,6 +10738,7 @@ class HygieneLookups:
             minimum_alert_severities = BestPractices.VULNERABILITY_ALERT_THRESHOLD
 
         conforming_profiles: Union[List[VulnerabilityProfile], List[AntiSpywareProfile]] = []
+        non_conforming_profiles: Union[List[VulnerabilityProfile], List[AntiSpywareProfile]] = []
         issues = []
 
         check_register = HygieneCheckRegister.get_hygiene_check_register(["BP-V-4"])
@@ -10700,6 +10751,24 @@ class HygieneLookups:
                 minimum_block_severities=minimum_block_severities,
                 minimum_alert_severities=minimum_alert_severities,
             )
+
+            if return_nonconforming_profiles:
+                current_non_conforming_profiles = [
+                    profile for profile in vulnerability_profiles if profile not in conforming_profiles
+                ]
+
+                for profile in current_non_conforming_profiles:
+                    issues.append(
+                        ConfigurationHygieneIssue(
+                            hostid=resolve_host_id(device),
+                            container_name=resolve_container_name(container),
+                            description="Vulnerability profile is not configured to block/alert on the required severity values.",
+                            name=profile.name,
+                            issue_code="BP-V-4",
+                        )
+                    )
+
+                non_conforming_profiles.extend(current_non_conforming_profiles)
 
         if len(conforming_profiles) == 0:
             issues.append(
@@ -10723,6 +10792,7 @@ class HygieneLookups:
         device_filter_str: Optional[str] = None,
         minimum_block_severities: Optional[List[str]] = None,
         minimum_alert_severities: Optional[List[str]] = None,
+        return_nonconforming_profiles: Optional[bool] = False,
     ) -> ConfigurationHygieneCheckResult:
         """
         Checks the environment to ensure at least one Spyware profile is configured according to visibility best practices.
@@ -10732,6 +10802,7 @@ class HygieneLookups:
         :param device_filter_str: Filter checks to a specific device or devices
         :param minimum_alert_severities: A string list of severities that MUST be in a alert mode
         :param minimum_block_severities: A string list of severities that MUST be in block mode
+        :param return_nonconforming_profiles: Whether to return details of non-conforming profiles
         """
         if not minimum_block_severities:
             minimum_block_severities = BestPractices.SPYWARE_BLOCK_SEVERITIES
@@ -10739,6 +10810,7 @@ class HygieneLookups:
             minimum_alert_severities = BestPractices.SPYWARE_ALERT_THRESHOLD
 
         conforming_profiles: Union[List[VulnerabilityProfile], List[AntiSpywareProfile]] = []
+        non_conforming_profiles: Union[List[VulnerabilityProfile], List[AntiSpywareProfile]] = []
         issues = []
         check_register = HygieneCheckRegister.get_hygiene_check_register(["BP-V-5"])
         # BP-V-5 - Check at least one AS profile exists with the correct settings.
@@ -10749,6 +10821,22 @@ class HygieneLookups:
                 minimum_block_severities=minimum_block_severities,
                 minimum_alert_severities=minimum_alert_severities,
             )
+
+            if return_nonconforming_profiles:
+                current_non_conforming_profiles = [profile for profile in spyware_profiles if profile not in conforming_profiles]
+
+                for profile in current_non_conforming_profiles:
+                    issues.append(
+                        ConfigurationHygieneIssue(
+                            hostid=resolve_host_id(device),
+                            container_name=resolve_container_name(container),
+                            description="Spyware profile is not configured to block/alert on the required severity values.",
+                            name=profile.name,
+                            issue_code="BP-V-5",
+                        )
+                    )
+
+                non_conforming_profiles.extend(current_non_conforming_profiles)
 
         if len(conforming_profiles) == 0:
             issues.append(
@@ -10882,16 +10970,21 @@ class HygieneLookups:
         return result
 
     @staticmethod
-    def check_url_filtering_profiles(topology: Topology, device_filter_str: Optional[str] = None):
+    def check_url_filtering_profiles(
+        topology: Topology, device_filter_str: Optional[str] = None, return_nonconforming_profiles: Optional[bool] = False
+    ):
         """
         Checks the configured URL filtering profiles to make sure at least one is configured according to PAN best practices
         for visibility.
 
         :param topology: `Topology` Instance
         :param device_filter_str: Filter checks to a specific device or devices
+        :param return_nonconforming_profiles: Whether to return details of non-conforming profiles
+
         """
         issues: List[ConfigurationHygieneIssue] = []
         conforming_profiles: List[URLFilteringProfile] = []
+        non_conforming_profiles: List[URLFilteringProfile] = []
         check_register = HygieneCheckRegister.get_hygiene_check_register(["BP-V-6"])
         # BP-V-6 - Check at least one URL Filtering profile exists with the correct settings.
         for device, container in topology.get_all_object_containers(device_filter_str):
@@ -10899,6 +10992,24 @@ class HygieneLookups:
             conforming_profiles = conforming_profiles + HygieneLookups.get_conforming_url_filtering_profiles(
                 url_filtering_profiles
             )
+
+            if return_nonconforming_profiles:
+                current_non_conforming_profiles = [
+                    profile for profile in url_filtering_profiles if profile not in conforming_profiles
+                ]
+
+                for profile in current_non_conforming_profiles:
+                    issues.append(
+                        ConfigurationHygieneIssue(
+                            hostid=resolve_host_id(device),
+                            container_name=resolve_container_name(container),
+                            description="URL Filtering profile is not configured to block/alert on the required severity values.",
+                            name=profile.name,
+                            issue_code="BP-V-6",
+                        )
+                    )
+
+                non_conforming_profiles.extend(current_non_conforming_profiles)
 
         if len(conforming_profiles) == 0:
             issues.append(
@@ -10924,24 +11035,39 @@ class HygieneLookups:
         """
         issues = []
         check_register = HygieneCheckRegister.get_hygiene_check_register(["BP-V-7"])
-        # This is temporary only look at panorama because PAN-OS-PYTHON doesn't let us tell if a config
-        # is template pushed yet
-        for device, container in topology.get_all_object_containers(device_filter_str, top_level_devices_only=True):
+        # pan-os-python will include Panorama template-pushed zones when checking a Firewall device without indication
+        # where they are actually configured, so we have to check after.
+        for device, container in topology.get_all_object_containers(device_filter_str):
             security_zones: List[Zone] = Zone.refreshall(container)
+
+            if isinstance(device, Firewall):
+                # If this is a Firewall device, get a list of all Template-pushed Zones (if any).
+                pushed_zones = set()
+                pushed_template = run_op_command(device, "show config pushed-template")
+                vsys_entries = pushed_template.findall(".//vsys/entry")
+                for vsys_entry in vsys_entries:
+                    zone_entries = vsys_entry.findall("./zone/entry")
+                    for zone_entry in zone_entries:
+                        pushed_zones.add(zone_entry.get("name"))
+
             for security_zone in security_zones:
-                if not security_zone.log_setting:
-                    issues.append(
-                        ConfigurationHygieneIssue(
-                            hostid=resolve_host_id(device),
-                            container_name=resolve_container_name(container),
-                            description="Security zone has no log forwarding setting.",
-                            name=security_zone.name,
-                            issue_code="BP-V-7",
+                # Skip zone if it's pushed from Panorama template so we accurately represent where it is configured.
+                if isinstance(device, Firewall) and security_zone.name in pushed_zones:
+                    continue
+                else:
+                    if not security_zone.log_setting:
+                        issues.append(
+                            ConfigurationHygieneIssue(
+                                hostid=resolve_host_id(device),
+                                container_name=resolve_container_name(container),
+                                description="Security zone has no log forwarding setting.",
+                                name=security_zone.name,
+                                issue_code="BP-V-7",
+                            )
                         )
-                    )
-                    check = check_register.get("BP-V-7")
-                    check.result = UNICODE_FAIL
-                    check.issue_count += 1
+                        check = check_register.get("BP-V-7")
+                        check.result = UNICODE_FAIL
+                        check.issue_count += 1
 
         return ConfigurationHygieneCheckResult(summary_data=[item for item in check_register.values()], result_data=issues)
 
@@ -11746,6 +11872,7 @@ def check_vulnerability_profiles(
     device_filter_string: Optional[str] = None,
     minimum_block_severities: str = "critical,high",
     minimum_alert_severities: str = "medium,low",
+    return_nonconforming_profiles: str = "no",
 ) -> ConfigurationHygieneCheckResult:
     """
     Checks the configured Vulnerability profiles to ensure at least one meets best practices. This will validate profiles
@@ -11755,12 +11882,14 @@ def check_vulnerability_profiles(
     :param device_filter_string: String to filter to only check given device
     :param minimum_block_severities: csv list of severities that must be in drop/reset/block-ip mode.
     :param minimum_alert_severities: csv list of severities that must be in alert/default or higher mode.
+    :param return_nonconforming_profiles: Whether to return details of non-conforming profiles
     """
     return HygieneLookups.check_vulnerability_profiles(
         topology,
         device_filter_str=device_filter_string,
         minimum_block_severities=argToList(minimum_block_severities),
         minimum_alert_severities=argToList(minimum_alert_severities),
+        return_nonconforming_profiles=argToBoolean(return_nonconforming_profiles),
     )
 
 
@@ -11769,6 +11898,7 @@ def check_spyware_profiles(
     device_filter_string: Optional[str] = None,
     minimum_block_severities: str = "critical,high",
     minimum_alert_severities: str = "medium,low",
+    return_nonconforming_profiles: str = "no",
 ) -> ConfigurationHygieneCheckResult:
     """
     Checks the configured Anti-spyware profiles to ensure at least one meets best practices.
@@ -11777,27 +11907,33 @@ def check_spyware_profiles(
     :param device_filter_string: String to filter to only check given device
     :param minimum_block_severities: csv list of severities that must be in drop/reset/block-ip mode.
     :param minimum_alert_severities: csv list of severities that must be in alert/default or higher mode.
+    :param return_nonconforming_profiles: Whether to return details of non-conforming profiles
+
     """
     return HygieneLookups.check_spyware_profiles(
         topology,
         device_filter_str=device_filter_string,
         minimum_block_severities=argToList(minimum_block_severities),
         minimum_alert_severities=argToList(minimum_alert_severities),
+        return_nonconforming_profiles=argToBoolean(return_nonconforming_profiles),
     )
 
 
 def check_url_filtering_profiles(
-    topology: Topology, device_filter_string: Optional[str] = None
+    topology: Topology, device_filter_string: Optional[str] = None, return_nonconforming_profiles: str = "no"
 ) -> ConfigurationHygieneCheckResult:
     """
     Checks the configured URL Filtering profiles to ensure at least one meets best practices.
 
     :param topology: `Topology` instance !no-auto-argument
     :param device_filter_string: String to filter to only check given device
+    :param return_nonconforming_profiles: Whether to return details of non-conforming profiles
+
     """
     return HygieneLookups.check_url_filtering_profiles(
         topology,
         device_filter_str=device_filter_string,
+        return_nonconforming_profiles=argToBoolean(return_nonconforming_profiles),
     )
 
 
@@ -12592,7 +12728,8 @@ def pan_os_edit_nat_rule_command(args):
         "audit-comment": ("audit-comment", "", False),
     }
 
-    element_to_change, object_name, is_listable = elements_to_change_mapping_pan_os_paths.get(element_to_change)  # type: ignore[misc]
+    element_to_change, object_name, is_listable = elements_to_change_mapping_pan_os_paths.get(
+        element_to_change)  # type: ignore[misc]
 
     raw_response = pan_os_edit_nat_rule(
         rule_name=rule_name,
@@ -12932,7 +13069,8 @@ def pan_os_edit_redistribution_profile_command(args):
         "filter_bgp_extended_community": ("filter/bgp/community", "extended-community", True),
     }
 
-    element_to_change, object_name, is_listable = elements_to_change_mapping_pan_os_paths.get(element_to_change)  # type: ignore[misc]
+    element_to_change, object_name, is_listable = elements_to_change_mapping_pan_os_paths.get(
+        element_to_change)  # type: ignore[misc]
 
     raw_response = pan_os_edit_redistribution_profile(
         virtual_router_name=virtual_router_name,
@@ -13266,7 +13404,8 @@ def pan_os_edit_pbf_rule_command(args):
     if element_to_change == "action_forward_discard":
         element_value = "discard"
 
-    element_to_change, object_name, is_listable = elements_to_change_mapping_pan_os_paths.get(element_to_change)  # type: ignore[misc]
+    element_to_change, object_name, is_listable = elements_to_change_mapping_pan_os_paths.get(
+        element_to_change)  # type: ignore[misc]
 
     raw_response = pan_os_edit_pbf_rule(
         rule_name=rule_name,
@@ -14994,7 +15133,8 @@ def fetch_incidents(
     demisto.debug(f"last id dictionary from previous fetch is: {last_id_dict=}.")
     demisto.debug(f"last offset dictionary from previous fetch is: {offset_dict=}.")
 
-    fetch_start_datetime_dict = get_fetch_start_datetime_dict(last_fetch_dict, first_fetch, queries_dict)  # type: ignore[arg-type]
+    fetch_start_datetime_dict = get_fetch_start_datetime_dict(
+        last_fetch_dict, first_fetch, queries_dict)  # type: ignore[arg-type]
     demisto.debug(f"updated last fetch per log type: {fetch_start_datetime_dict=}.")
 
     incident_entries_dict = fetch_incidents_request(
@@ -15006,9 +15146,11 @@ def fetch_incidents(
     update_offset_dict(incident_entries_dict, last_fetch_dict, offset_dict)
 
     # remove duplicated incidents from incident_entries_dict
-    unique_incident_entries_dict = filter_fetched_entries(entries_dict=incident_entries_dict, id_dict=last_id_dict)  # type: ignore[arg-type]
+    unique_incident_entries_dict = filter_fetched_entries(
+        entries_dict=incident_entries_dict, id_dict=last_id_dict)  # type: ignore[arg-type]
 
-    parsed_incident_entries_list = get_parsed_incident_entries(unique_incident_entries_dict, last_fetch_dict, last_id_dict)  # type: ignore[arg-type]
+    parsed_incident_entries_list = get_parsed_incident_entries(
+        unique_incident_entries_dict, last_fetch_dict, last_id_dict)  # type: ignore[arg-type]
 
     new_last_run = LastRun(
         last_fetch_dict=last_fetch_dict,
@@ -15073,7 +15215,8 @@ def main():  # pragma: no cover
             fetch_max_attempts = arg_to_number(params["fetch_job_polling_max_num_attempts"])
             max_fetch = cast(MaxFetch, dict.fromkeys(queries, configured_max_fetch))
 
-            new_last_run, incident_entries = fetch_incidents(last_run, first_fetch, queries, max_fetch, fetch_max_attempts)  # type: ignore[arg-type]
+            new_last_run, incident_entries = fetch_incidents(
+                last_run, first_fetch, queries, max_fetch, fetch_max_attempts)  # type: ignore[arg-type]
 
             demisto.setLastRun(new_last_run)
             demisto.incidents(incident_entries)
@@ -15329,21 +15472,69 @@ def main():  # pragma: no cover
         elif command == "panorama-show-device-version" or command == "pan-os-show-device-version":
             panorama_show_device_version_command(args.get("target"))
 
-        # Download the latest content update
+        # Download the latest app/threat content update
         elif command == "panorama-download-latest-content-update" or command == "pan-os-download-latest-content-update":
-            panorama_download_latest_content_update_command(args)
+            panorama_download_latest_dynamic_update_command(DynamicUpdateType.APP_THREAT, args)
 
-        # Download the latest content update
-        elif command == "panorama-content-update-download-status" or command == "pan-os-content-update-download-status":
-            panorama_content_update_download_status_command(args)
+        # Download the latest antivirus content update
+        elif command == "pan-os-download-latest-antivirus-update":
+            panorama_download_latest_dynamic_update_command(DynamicUpdateType.ANTIVIRUS, args)
 
-        # Install the latest content update
+        # Download the latest wildfire content update
+        elif command == "pan-os-download-latest-wildfire-update":
+            panorama_download_latest_dynamic_update_command(DynamicUpdateType.WILDFIRE, args)
+
+        # Download the latest GP content update
+        elif command == "pan-os-download-latest-gp-update":
+            panorama_download_latest_dynamic_update_command(DynamicUpdateType.GP, args)
+
+        # Check download status of the latest app/threat content update
+        elif command == "pan-os-content-update-download-status":
+            panorama_dynamic_update_download_status_command(DynamicUpdateType.APP_THREAT, args)
+
+        # Check download status of the latest antivirus content update
+        elif command == "pan-os-antivirus-update-download-status":
+            panorama_dynamic_update_download_status_command(DynamicUpdateType.ANTIVIRUS, args)
+
+        # Check download status of the latest wildfire content update
+        elif command == "pan-os-wildfire-update-download-status":
+            panorama_dynamic_update_download_status_command(DynamicUpdateType.WILDFIRE, args)
+
+        # Check download status of the latest GP content update
+        elif command == "pan-os-gp-update-download-status":
+            panorama_dynamic_update_download_status_command(DynamicUpdateType.GP, args)
+
+        # Install the latest app/threat content update
         elif command == "panorama-install-latest-content-update" or command == "pan-os-install-latest-content-update":
-            panorama_install_latest_content_update_command(args.get("target"))
+            panorama_install_latest_dynamic_update_command(DynamicUpdateType.APP_THREAT, args.get("target"))
 
-        # Content update install status
+        # Install the latest antivirus content update
+        elif command == "pan-os-install-latest-antivirus-update":
+            panorama_install_latest_dynamic_update_command(DynamicUpdateType.ANTIVIRUS, args.get("target"))
+
+        # Install the latest wildfire content update
+        elif command == "pan-os-install-latest-wildfire-update":
+            panorama_install_latest_dynamic_update_command(DynamicUpdateType.WILDFIRE, args.get("target"))
+
+        # Install the latest GP content update
+        elif command == "pan-os-install-latest-gp-update":
+            panorama_install_latest_dynamic_update_command(DynamicUpdateType.GP, args.get("target"))
+
+        # App/Threat update install status
         elif command == "panorama-content-update-install-status" or command == "pan-os-content-update-install-status":
-            panorama_content_update_install_status_command(args)
+            panorama_dynamic_update_install_status_command(DynamicUpdateType.APP_THREAT, args)
+
+        # Antivirus update install status
+        elif command == "pan-os-antivirus-update-install-status":
+            panorama_dynamic_update_install_status_command(DynamicUpdateType.ANTIVIRUS, args)
+
+        # WildFire update install status
+        elif command == "pan-os-wildfire-update-install-status":
+            panorama_dynamic_update_install_status_command(DynamicUpdateType.WILDFIRE, args)
+
+        # GP update install status
+        elif command == "pan-os-gp-update-install-status":
+            panorama_dynamic_update_install_status_command(DynamicUpdateType.GP, args)
 
         # Check PAN-OS latest software update
         elif command == "panorama-check-latest-panos-software" or command == "pan-os-check-latest-panos-software":

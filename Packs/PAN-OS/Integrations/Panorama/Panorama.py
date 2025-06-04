@@ -10,7 +10,6 @@ import enum
 import html
 
 import panos.errors
-import panos
 
 from panos.base import PanDevice, VersionedPanObject, Root, ENTRY, VersionedParamPath  # type: ignore
 from panos.panorama import Panorama, DeviceGroup, Template, TemplateStack, PanoramaCommitAll
@@ -14751,12 +14750,23 @@ def pan_os_get_certificate_info_command(topology: Topology, args: Dict) -> Comma
         panorama_devices = topology.panorama_devices()
         if panorama_devices:
             for device in panorama_devices:
+                templates = Template.refreshall(device)
+                template_stacks = TemplateStack.refreshall(device)
+                
                 #1. Get certs pushed from Panorama:
                 response_pushed = run_op_command(device, SHOW_CONFIG_RUNNING)
                 
                 # Process pushed certificates
                 if response_pushed and hasattr(response_pushed, 'get') and response_pushed.get("status") == "success":
-                    certificate = response_pushed.find(".//certificate")
+                    template_config = response_pushed.find(".//template")
+                    template_stack_config = response_pushed.find(".//template-stack")
+                    if template_config.find(".//certificate"):
+                        certificate = template_config.find(".//certificate")
+                        devices_using_certificate = [template.devices for template in templates if hasattr(template, "devices") if template.devices] 
+                    elif template_stack_config.find(".//certificate"):
+                        certificate = template_stack_config.find(".//certificate")
+                        devices_using_certificate = [template_stack.devices for template_stack in template_stacks if hasattr(template_stack, "devices") if template_stack.devices]
+                    
                     pushed_certs = certificate.findall(".//entry") if certificate else []
                     demisto.debug(f"Found {len(pushed_certs)} pushed certificates")
             
@@ -14768,14 +14778,16 @@ def pan_os_get_certificate_info_command(topology: Topology, args: Dict) -> Comma
                             expiration_status = expiration_status_check(cert_expiration)
                         else:
                             cert_expiration = None
-                            is_expired = False
+                            expiration_status = None
                         CERT_DETAILS.append({"name" : cert.get('name'),
                                             "expiration_date": not_valid_after.text if not_valid_after is not None else None,
                                             "subject": subject_elem.text if subject_elem is not None else None,
                                             "device": device.hostname,
                                             "location": "Panorama",
                                             "expiration_status": expiration_status,
-                                            "cert_type": "Pushed"})
+                                            "cert_type": "Pushed",
+                                            "devices_using_certificate": devices_using_certificate[0] if len(devices_using_certificate)>0 else None,
+                                            })
         
         firewall_devices = topology.firewall_devices()
         if firewall_devices:
@@ -14798,7 +14810,7 @@ def pan_os_get_certificate_info_command(topology: Topology, args: Dict) -> Comma
                                 expiration_status = expiration_status_check(cert_expiration)
                             else:
                                 cert_expiration = None
-                                is_expired = False
+                                expiration_status = None
                                 
                             CERT_DETAILS.append({"name" : cert.get('name'),
                                                 "expiration_date": not_valid_after.text if not_valid_after is not None else None,
@@ -14824,7 +14836,7 @@ def pan_os_get_certificate_info_command(topology: Topology, args: Dict) -> Comma
                             expiration_status = expiration_status_check(cert_expiration)
                         else:
                             cert_expiration = None
-                            is_expired = False
+                            expiration_status = None
                         CERT_DETAILS.append({
                             "name": cert.get('name'),
                             "expiration_date": not_valid_after.text if not_valid_after is not None else None,
@@ -14853,7 +14865,7 @@ def pan_os_get_certificate_info_command(topology: Topology, args: Dict) -> Comma
                     expiration_status = expiration_status_check(cert_expiration)
                 else:
                     cert_expiration = None
-                    expiration_status = False
+                    expiration_status = None
                 
                 CERT_DETAILS.append({
                             "name": cert.get('name'),

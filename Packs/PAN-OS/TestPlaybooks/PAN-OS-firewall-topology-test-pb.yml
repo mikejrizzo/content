@@ -1,4 +1,4 @@
-description: Test playbook for firewall toplogy commands
+description: Test playbook for firewall toplogy commands.
 id: PAN-OS-firewall-topology-test-pb
 inputs: []
 name: PAN-OS-firewall-topology-test-pb
@@ -23,6 +23,7 @@ tasks:
       iscommand: false
       name: ''
       version: -1
+      description: ''
     taskid: 5ce87c0a-493a-4945-886c-5e2ba3212c0f
     timertriggers: []
     type: start
@@ -442,6 +443,7 @@ tasks:
       name: Test Done
       type: title
       version: -1
+      description: ''
     taskid: c5ab2726-22c3-4f59-81cb-42dc48d8b172
     timertriggers: []
     type: title

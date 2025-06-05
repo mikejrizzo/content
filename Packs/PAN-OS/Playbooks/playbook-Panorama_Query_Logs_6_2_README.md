@@ -1,21 +1,27 @@
 Queries Panorama Logs of types: traffic, threat, URL, data-filtering and WildFire.
 
 ## Dependencies
+
 This playbook uses the following sub-playbooks, integrations, and scripts.
 
 ### Sub-playbooks
+
 This playbook does not use any sub-playbooks.
 
 ### Integrations
+
 This playbook does not use any integrations.
 
 ### Scripts
+
 This playbook does not use any scripts.
 
 ### Commands
+
 * pan-os-query-logs
 
 ## Playbook Inputs
+
 ---
 
 | **Name** | **Description** | **Required** |
@@ -35,6 +41,7 @@ This playbook does not use any scripts.
 | filedigest | The file hash (for WildFIre logs only). | Optional |
 
 ## Playbook Outputs
+
 ---
 
 | **Path** | **Description** | **Type** |
@@ -82,5 +89,6 @@ This playbook does not use any scripts.
 | Panorama.Monitor.Message | The message of the log query. | string |
 
 ## Playbook Image
+
 ---
 ![Panorama_Query_Logs](../doc_files/Panorama_Query_Logs.png)

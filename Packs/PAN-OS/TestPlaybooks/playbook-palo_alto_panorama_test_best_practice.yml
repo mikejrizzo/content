@@ -22,6 +22,7 @@ tasks:
       iscommand: false
       name: ""
       version: -1
+      description: ''
     taskid: eaf41254-df84-4080-880f-66b28b997de0
     timertriggers: []
     type: start
@@ -85,6 +86,7 @@ tasks:
       name: WildFire
       type: title
       version: -1
+      description: ''
     taskid: 1186f285-c551-42be-8263-b8128b2f9fff
     timertriggers: []
     type: title
@@ -217,8 +219,7 @@ tasks:
     skipunavailable: false
     task:
       brand: Panorama
-      description: Enforces wildfire best practices to upload files to the maximum
-        size, forwards all file types, and updates the schedule.
+      description: Enforces wildfire best practices to upload files to the maximum size, forwards all file types, and updates the schedule.
       id: 450e1918-1ecd-4f63-819d-33c7f0b61d68
       iscommand: true
       name: enforce-wildfire-best-practice
@@ -254,6 +255,7 @@ tasks:
       name: Get Security Profiles Best Practices
       type: title
       version: -1
+      description: ''
     taskid: 39f32452-c8f9-4fb7-8c9c-7d90dc7db797
     timertriggers: []
     type: title
@@ -604,10 +606,7 @@ tasks:
     skipunavailable: false
     task:
       brand: Panorama
-      description: Commits a configuration to the Palo Alto firewall or Panorama,
-        but does not validate if the commit was successful. Committing to Panorama
-        does not push the configuration to the firewalls. To push the configuration,
-        run the panorama-push-to-device-group command.
+      description: Commits a configuration to the Palo Alto firewall or Panorama, but does not validate if the commit was successful. Committing to Panorama does not push the configuration to the firewalls. To push the configuration, run the panorama-push-to-device-group command.
       id: 7befe6d7-f713-48f7-813c-4215d3dc5917
       iscommand: true
       name: pan-os-commit
@@ -888,6 +887,7 @@ tasks:
       name: Security Profiles Creation
       type: title
       version: -1
+      description: ''
     taskid: 551d7602-13a9-4829-8c21-840890bbf06e
     timertriggers: []
     type: title
@@ -1264,6 +1264,7 @@ tasks:
       name: Done
       type: title
       version: -1
+      description: ''
     taskid: 2dae48ac-aeb2-45f5-8344-e3f685fa4c9f
     timertriggers: []
     type: title
@@ -1562,8 +1563,7 @@ tasks:
     skipunavailable: false
     task:
       brand: Panorama
-      description: Apply a security profile to specific rules or rules with a specific
-        tag.
+      description: Apply a security profile to specific rules or rules with a specific tag.
       id: 70d99feb-b136-4585-830e-ac31c6a30aef
       iscommand: true
       name: apply-security-profile

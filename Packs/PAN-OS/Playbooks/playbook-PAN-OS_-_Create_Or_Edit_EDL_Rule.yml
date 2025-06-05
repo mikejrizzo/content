@@ -2,7 +2,7 @@ id: PAN-OS - Create Or Edit EDL Rule
 version: -1
 fromversion: 5.0.0
 name: PAN-OS - Create Or Edit EDL Rule
-description: Creates or edits a Panorama rule and moves it into the desired position
+description: Creates or edits a Panorama rule and moves it into the desired position.
 starttaskid: "0"
 tasks:
   "0":

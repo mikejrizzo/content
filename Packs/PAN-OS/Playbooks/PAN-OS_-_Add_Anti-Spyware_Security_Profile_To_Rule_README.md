@@ -1,10 +1,12 @@
 This playbook is designed to enhance the security level in PAN-OS firewalls by safely adding an Anti-Spyware security profile to a security rule.
 
 The playbook provides control over the behavior when a rule:
+
 - Already has an Anti-Spyware profile
 - Uses a security profile group, with or without an Anti-Spyware profile
 
 The output of the playbook is the Anti-Spyware profile configured for the rule upon playbook completion. This can be:
+
 - The initial profile, if untouched
 - A newly overwritten profile
 - A newly added profile
@@ -20,18 +22,18 @@ This playbook does not use any sub-playbooks.
 
 ### Integrations
 
-* Panorama
+- Panorama
 
 ### Scripts
 
-* SetAndHandleEmpty
+- SetAndHandleEmpty
 
 ### Commands
 
-* pan-os-get-security-profiles
-* pan-os-create-anti-spyware-best-practice-profile
-* pan-os-apply-security-profile
-* pan-os-list-rules
+- pan-os-get-security-profiles
+- pan-os-create-anti-spyware-best-practice-profile
+- pan-os-apply-security-profile
+- pan-os-list-rules
 
 ## Playbook Inputs
 

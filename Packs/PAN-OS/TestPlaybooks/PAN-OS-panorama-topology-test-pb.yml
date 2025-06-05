@@ -1,4 +1,4 @@
-description: Test playbook for panorama toplogy commands
+description: Test playbook for panorama toplogy commands.
 id: PAN-OS-panorama-topology-test-pb
 inputs: []
 name: PAN-OS-panorama-topology-test-pb
@@ -23,6 +23,7 @@ tasks:
       iscommand: false
       name: ''
       version: -1
+      description: ''
     taskid: 55c00b4c-03a8-4555-884c-0539c27f3bcd
     timertriggers: []
     type: start
@@ -628,6 +629,7 @@ tasks:
       name: Test Done
       type: title
       version: -1
+      description: ''
     taskid: 8ec10482-eca9-456d-8e77-5738f29f7faf
     timertriggers: []
     type: title

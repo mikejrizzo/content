@@ -1,4 +1,5 @@
 This playbook creates a DNS sinkhole in a PAN-OS firewall. It does the following:
+
 1. Finds a security rule that allows DNS traffic from the internal network to the internet using the "Security Policy Match" feature against traffic from the internal DNS server/s to the public DNS server.
 2. Creates or adds an existing anti-spyware security profile to the security rule/s that were found.
 3. Sets the DNS Signature Source under the DNS Policies configuration of the security profile with the "sinkhole" action.
@@ -18,6 +19,7 @@ In order to find the IP addresses of those systems, a new rule denying all reque
 
 
 Assumptions:
+
 - The domains that should be sinkholed are already in a DNS signature source. It can be one of the following sources available in PAN-OS:
     1. An existing External Dynamic List (EDL) of type Domain configured in the PAN-OS firewall. Note: Cortex XSOAR simplifies the process of creating an EDL, with the Export Generic Indicators Service integration.
     2. Palo Alto Networks Content-delivered malicious domains
@@ -30,29 +32,29 @@ This playbook uses the following sub-playbooks, integrations, and scripts.
 
 ### Sub-playbooks
 
-* PAN-OS - Add Anti-Spyware Security Profile To Rule
+- PAN-OS - Add Anti-Spyware Security Profile To Rule
 
 ### Integrations
 
-* Panorama
+- Panorama
 
 ### Scripts
 
-* Set
-* IsIntegrationAvailable
+- Set
+- IsIntegrationAvailable
 
 ### Commands
 
-* pan-os-apply-dns-signature-policy
-* pan-os-create-tag
-* pan-os-create-address
-* pan-os-commit
-* pan-os-create-rule
-* pan-os-list-tag
-* pan-os-list-rules
-* pan-os-list-addresses
-* pan-os-edit-rule
-* pan-os-security-policy-match
+- pan-os-apply-dns-signature-policy
+- pan-os-create-tag
+- pan-os-create-address
+- pan-os-commit
+- pan-os-create-rule
+- pan-os-list-tag
+- pan-os-list-rules
+- pan-os-list-addresses
+- pan-os-edit-rule
+- pan-os-security-policy-match
 
 ## Playbook Inputs
 
@@ -83,6 +85,7 @@ There are no outputs for this playbook.
 ![PAN-OS - Configure DNS Sinkhole](../doc_files/PAN-OS_-_Configure_DNS_Sinkhole.png)
 
 ## Playbook Demo Video
+
 <video controls>
     <source src="https://github.com/demisto/content-assets/raw/master/Assets/DNSSinkhole/DNS%20Sinkhole.mp4"
             type="video/mp4"/>

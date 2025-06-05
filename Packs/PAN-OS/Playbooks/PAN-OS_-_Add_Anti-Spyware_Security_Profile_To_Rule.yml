@@ -1,7 +1,7 @@
 id: PAN-OS - Add Anti-Spyware Security Profile To Rule
 version: -1
 name: PAN-OS - Add Anti-Spyware Security Profile To Rule
-description: |
+description: |-
   This playbook is designed to enhance the security level in PAN-OS firewalls by safely adding an Anti-Spyware security profile to a security rule.
   The playbook provides control over the behavior when a a rule:
   - Already has an Anti-Spyware profile
@@ -10,7 +10,7 @@ description: |
   The output of the playbook is the Anti-Spyware profile configured for the rule upon playbook completion. This can be:
   - The initial profile, if untouched
   - A newly overwritten profile
-  - A newly added profile
+  - A newly added profile.
 tags:
 - PAN-OS
 starttaskid: "0"

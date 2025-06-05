@@ -2,7 +2,7 @@ id: PAN-OS - Create Or Edit Rule
 version: -1
 name: PAN-OS - Create Or Edit Rule
 fromversion: 5.0.0
-description: Creates or edits a Panorama rule and moves it into the desired position
+description: Creates or edits a Panorama rule and moves it into the desired position.
 starttaskid: "0"
 tasks:
   "0":
@@ -527,7 +527,6 @@ inputs:
 outputs: []
 tests:
 - no test
-sourceplaybookid: PAN-OS - Create Or Edit Rule
 supportedModules:
 - X1
 - X3

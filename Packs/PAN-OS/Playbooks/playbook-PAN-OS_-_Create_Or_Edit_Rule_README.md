@@ -1,24 +1,30 @@
 Creates or edits a Panorama rule and moves it into the desired position.
 
 ## Dependencies
+
 This playbook uses the following sub-playbooks, integrations, and scripts.
 
 ### Sub-playbooks
+
 This playbook does not use any sub-playbooks.
 
 ### Integrations
+
 * Panorama
 
 ### Scripts
+
 This playbook does not use any scripts.
 
 ### Commands
+
 * pan-os-edit-rule
 * pan-os-list-rules
 * pan-os-move-rule
 * pan-os-create-rule
 
 ## Playbook Inputs
+
 ---
 
 | **Name** | **Description** | **Required** |
@@ -34,9 +40,11 @@ This playbook does not use any scripts.
 | pre-post-rulebase | Whether the rule is a pre-rulebase or post-rulebase rule, according to the rule structure. Exists only in panorama. | Optional |
 
 ## Playbook Outputs
+
 ---
 There are no outputs for this playbook.
 
 ## Playbook Image
+
 ---
 ![PAN-OS_Create_Or_Edit_Rule](../doc_files/PAN-OS_Create_Or_Edit_Rule.png)

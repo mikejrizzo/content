@@ -13,12 +13,12 @@ This playbook uses the following sub-playbooks, integrations, and scripts.
 
 ### Sub-playbooks
 
-* PAN-OS DAG Configuration
-* PAN-OS - Block IP - Static Address Group
+- PAN-OS DAG Configuration
+- PAN-OS - Block IP - Static Address Group
 
 ### Integrations
 
-* Panorama
+- Panorama
 
 ### Scripts
 
@@ -26,8 +26,8 @@ This playbook does not use any scripts.
 
 ### Commands
 
-* pan-os-list-tag
-* pan-os-list-address-groups
+- pan-os-list-tag
+- pan-os-list-address-groups
 
 ## Playbook Inputs
 

@@ -1,21 +1,27 @@
 Queries the following PAN-OS log types: traffic, threat, URL, data-filtering and wildfire. The playbook accepts inputs such as IP addresses, hash, and URL.
 
 ## Dependencies
+
 This playbook uses the following sub-playbooks, integrations, and scripts.
 
 ### Sub-playbooks
+
 This playbook does not use any sub-playbooks.
 
 ### Integrations
+
 This playbook does not use any integrations.
 
 ### Scripts
+
 This playbook does not use any scripts.
 
 ### Commands
+
 * pan-os-query-logs
 
 ## Playbook Inputs
+
 ---
 
 | **Name** | **Description** | **Required** |
@@ -25,6 +31,7 @@ This playbook does not use any scripts.
 | ip | The source or destination address.| Optional |
 
 ## Playbook Outputs
+
 ---
 
 | **Path** | **Description** | **Type** |
@@ -71,5 +78,6 @@ This playbook does not use any scripts.
 | Panorama.Monitor.Message | The message  of the logs query. | string |
 
 ## Playbook Image
+
 ---
 ![PAN-OS_Query_Logs_For_Indicators](../doc_files/PAN-OS_Query_Logs_For_Indicators.png)

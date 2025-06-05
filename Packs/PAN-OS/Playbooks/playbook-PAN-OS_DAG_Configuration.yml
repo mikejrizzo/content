@@ -481,7 +481,6 @@ inputs:
 outputs: []
 tests:
 - PAN-OS DAG Configuration Test
-sourceplaybookid: PAN-OS DAG Configuration
 supportedModules:
 - X1
 - X3

@@ -1,4 +1,4 @@
-description: Test playbook for palo alto firewall
+description: Test playbook for palo alto firewall.
 id: palo_alto_firewall_test_pb
 inputs: []
 name: palo_alto_firewall_test_pb
